@@ -18,14 +18,19 @@ object AST {
   }
 
   case object Null extends Primitive(Value.Null)
+
   case object Undefined extends Primitive(Value.Undefined)
 
   sealed trait Bool extends Expr
+
   case object True extends Primitive(Value.True) with Bool
+
   case object False extends Primitive(Value.False) with Bool
 
   sealed trait Numeric extends Expr
+
   case object Infinity extends Primitive(Value.Infinity) with Numeric
+
   final case class Number(value: Double) extends Primitive(Value.Number(value)) with Numeric
 
   final case class Str(value: String) extends Primitive(Value.Str(value))
@@ -187,7 +192,7 @@ object AST {
   }
 
   final case class Call(expr: Expr, args: Seq[(Option[Identifier], Expr)])
-      extends Expr {
+    extends Expr {
 
     override def eval(context: Context): Value = {
 
@@ -255,4 +260,30 @@ object AST {
       }
     }
   }
+
+  final case class Regex(pattern: String, flags: Set[RegexFlag] = Set.empty) extends Expr {
+    override def eval(context: Context): Value = Value.Regex(pattern, flags.map(Value.RegexFlag.apply))
+  }
+
+  sealed abstract class RegexFlag(val flag: String)
+
+  object RegexFlag {
+    def apply(allFlags: String): Set[RegexFlag] =
+      allFlags.split("").toSet[String].collect {
+        case ApplyGlobally.flag => ApplyGlobally
+        case CaseInsensitive.flag => CaseInsensitive
+        case MultiLine.flag => MultiLine
+        case Sticky.flag => Sticky
+      }
+
+    final case object ApplyGlobally extends RegexFlag("g")
+
+    final case object CaseInsensitive extends RegexFlag("i")
+
+    final case object MultiLine extends RegexFlag("m")
+
+    final case object Sticky extends RegexFlag("y")
+
+  }
+
 }

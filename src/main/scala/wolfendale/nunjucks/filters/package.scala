@@ -41,12 +41,17 @@ package object filters {
     Str(string.toStr.value.trim)
   }
 
+  val string: Filter = Filter { string: Value =>
+    string.toStr
+  }
+
   lazy val defaults: Map[String, Filter] = Map(
     "abs"        -> abs,
     "batch"      -> batch,
     "capitalize" -> capitalize,
     "upper"      -> upper,
     "lower"      -> lower,
-    "trim"       -> trim
+    "trim"       -> trim,
+    "string"     -> string
   )
 }

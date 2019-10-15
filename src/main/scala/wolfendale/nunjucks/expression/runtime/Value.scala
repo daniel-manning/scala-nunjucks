@@ -1,6 +1,7 @@
 package wolfendale.nunjucks.expression.runtime
 
 import wolfendale.nunjucks.Frame
+import wolfendale.nunjucks.expression.syntax.AST
 
 import scala.annotation.tailrec
 import scala.util.Try
@@ -16,6 +17,7 @@ sealed abstract class Value {
 
   final def `===`(other: Value): Bool =
     if (this == other) True else False
+
   final def `!==`(other: Value): Bool =
     !(this `===` other)
 
@@ -34,6 +36,7 @@ sealed abstract class Value {
   def unary_! : Bool = !toBool
 
   def unary_- : Numeric = -toNumeric
+
   def unary_+ : Numeric = toNumeric
 
   def +(other: Value): Value =
@@ -79,11 +82,13 @@ sealed abstract class Value {
 
   def isDefined: Boolean = true
 
-  def toArr: Arr              = Arr.empty
+  def toArr: Arr = Arr.empty
   def destructure: Seq[Value] = Seq(this)
 
   def toStr: Str
+
   def toBool: Bool
+
   def toNumeric: Numeric
 }
 
@@ -94,7 +99,7 @@ object Value {
     override def `==`(other: Value): Bool =
       other match {
         case Null | Undefined => True
-        case _                => False
+        case _ => False
       }
 
     override def toStr: Str =
@@ -114,7 +119,7 @@ object Value {
     override def `==`(other: Value): Bool =
       other match {
         case Null | Undefined => True
-        case _                => False
+        case _ => False
       }
 
     override def toStr: Str =
@@ -134,12 +139,17 @@ object Value {
     final override def toBool: Bool = this
   }
 
+  object Bool {
+    def apply(bool: Boolean): Bool =
+      if (bool) Value.True else Value.False
+  }
+
   case object True extends Bool {
 
     override def `==`(other: Value): Bool =
       other match {
         case True | Number(1) => True
-        case _                => False
+        case _ => False
       }
 
     override def ||(other: Value): Bool =
@@ -163,7 +173,7 @@ object Value {
     override def `==`(other: Value): Bool =
       other match {
         case False | Number(0) | Str("") => True
-        case _                           => False
+        case _ => False
       }
 
     override def ||(other: Value): Bool =
@@ -198,7 +208,7 @@ object Value {
     override def +(other: Value): Value =
       other match {
         case _: Str | _: Arr | _: Obj => toStr + other
-        case _                        => this
+        case _ => this
       }
 
     override def *(other: Value): Numeric =
@@ -234,7 +244,7 @@ object Value {
     override def `==`(other: Value): Bool =
       other.toNumeric match {
         case Infinity => True
-        case _        => False
+        case _ => False
       }
 
     override def <(other: Value): Bool =
@@ -243,38 +253,39 @@ object Value {
     override def >(other: Value): Bool =
       other match {
         case Infinity | NaN => False
-        case _              => True
+        case _ => True
       }
 
+    @tailrec
     override def +(other: Value): Value =
       other match {
-        case NaN | `-Infinity`        => NaN
-        case _: Numeric               => Infinity
+        case NaN | `-Infinity` => NaN
+        case _: Numeric => Infinity
         case _: Str | _: Arr | _: Obj => toStr + other
-        case _                        => this + other.toNumeric
+        case _ => this + other.toNumeric
       }
 
     override def *(other: Value): Numeric =
       other.toNumeric match {
-        case NaN | Number(0)    => NaN
-        case Infinity           => Infinity
+        case NaN | Number(0) => NaN
+        case Infinity => Infinity
         case Number(o) if o > 0 => Infinity
-        case _                  => -Infinity
+        case _ => -Infinity
       }
 
     override def **(other: Value): Numeric =
       other match {
-        case NaN                => NaN
-        case Infinity           => Infinity
+        case NaN => NaN
+        case Infinity => Infinity
         case Number(o) if o > 0 => Infinity
-        case _                  => Number(0)
+        case _ => Number(0)
       }
 
     override def /(other: Value): Numeric =
       other.toNumeric match {
         case NaN | Infinity | `-Infinity` => NaN
-        case Number(o) if o > 0           => Infinity
-        case _                            => -Infinity
+        case Number(o) if o > 0 => Infinity
+        case _ => -Infinity
       }
 
     override def idiv(other: Value): Numeric =
@@ -301,13 +312,13 @@ object Value {
     override def `==`(other: Value): Bool =
       other.toNumeric match {
         case `-Infinity` => True
-        case _           => False
+        case _ => False
       }
 
     override def <(other: Value): Bool =
       other match {
         case `-Infinity` | NaN => False
-        case _                 => True
+        case _ => True
       }
 
     override def >(other: Value): Bool =
@@ -316,34 +327,34 @@ object Value {
     @tailrec
     override def +(other: Value): Value =
       other match {
-        case NaN | Infinity           => NaN
-        case _: Numeric               => -Infinity
+        case NaN | Infinity => NaN
+        case _: Numeric => -Infinity
         case _: Str | _: Arr | _: Obj => toStr + other
-        case _                        => this + other.toNumeric
+        case _ => this + other.toNumeric
       }
 
     override def *(other: Value): Numeric =
       other.toNumeric match {
-        case NaN | Number(0)    => NaN
+        case NaN | Number(0) => NaN
         case Number(o) if o > 0 => -Infinity
-        case Infinity           => -Infinity
-        case _                  => Infinity
+        case Infinity => -Infinity
+        case _ => Infinity
       }
 
     override def **(other: Value): Numeric =
       other.toNumeric match {
-        case NaN                => NaN
-        case Number(0)          => Number(1)
+        case NaN => NaN
+        case Number(0) => Number(1)
         case Number(o) if o < 0 => Number(-0)
-        case Infinity           => Infinity
-        case _                  => -Infinity
+        case Infinity => Infinity
+        case _ => -Infinity
       }
 
     override def /(other: Value): Numeric =
       other.toNumeric match {
         case NaN | Infinity | `-Infinity` => NaN
-        case Number(o) if o > 0           => -Infinity
-        case _                            => Infinity
+        case Number(o) if o > 0 => -Infinity
+        case _ => Infinity
       }
 
     override def idiv(other: Value): Numeric =
@@ -370,70 +381,70 @@ object Value {
     override def `==`(other: Value): Bool =
       other.toNumeric match {
         case Number(o) => if (value == o) True else False
-        case _         => False
+        case _ => False
       }
 
     override def <(other: Value): Bool =
       other.toNumeric match {
         case NaN | `-Infinity` => False
-        case Infinity          => True
-        case Number(o)         => if (value < o) True else False
+        case Infinity => True
+        case Number(o) => if (value < o) True else False
       }
 
     override def >(other: Value): Bool =
       other.toNumeric match {
         case NaN | Infinity => False
-        case `-Infinity`    => True
-        case Number(o)      => if (value > o) True else False
+        case `-Infinity` => True
+        case Number(o) => if (value > o) True else False
       }
 
     @tailrec
     override def +(other: Value): Value =
       other match {
-        case NaN                      => NaN
-        case Infinity                 => Infinity
-        case `-Infinity`              => -Infinity
-        case Number(o)                => Number(value + o)
+        case NaN => NaN
+        case Infinity => Infinity
+        case `-Infinity` => -Infinity
+        case Number(o) => Number(value + o)
         case _: Str | _: Obj | _: Arr => toStr + other
-        case _                        => this + other.toNumeric
+        case _ => this + other.toNumeric
       }
 
     override def *(other: Value): Numeric =
       other.toNumeric match {
-        case NaN         => NaN
-        case Number(o)   => Number(value * o)
-        case Infinity    => if (value > 0) Infinity else -Infinity
+        case NaN => NaN
+        case Number(o) => Number(value * o)
+        case Infinity => if (value > 0) Infinity else -Infinity
         case `-Infinity` => if (value > 0) -Infinity else Infinity
       }
 
     override def **(other: Value): Numeric =
       other.toNumeric match {
-        case NaN         => NaN
-        case Number(o)   => Number(scala.math.pow(value, o))
-        case Infinity    => if (value == 0) Number(0) else NaN
+        case NaN => NaN
+        case Number(o) => Number(scala.math.pow(value, o))
+        case Infinity => if (value == 0) Number(0) else NaN
         case `-Infinity` => if (value == 0) Infinity else NaN
       }
 
     override def /(other: Value): Numeric =
       other.toNumeric match {
-        case NaN                    => NaN
-        case Number(0)              => Infinity
-        case Number(o)              => Number(value / o)
+        case NaN => NaN
+        case Number(0) => Infinity
+        case Number(o) => Number(value / o)
         case Infinity | `-Infinity` => Number(0)
       }
 
     override def idiv(other: Value): Numeric =
       other.toNumeric match {
-        case NaN                    => NaN
-        case Number(0)              => Infinity
-        case Number(o)              => Number((value / o).toLong.toDouble)
+        case NaN => NaN
+        case Number(0) => Infinity
+        case Number(o) => Number((value / o).toLong.toDouble)
         case Infinity | `-Infinity` => Number(0)
       }
 
     override def %(other: Value): Numeric =
       other.toNumeric match {
         case NaN | Infinity | `-Infinity` => NaN
-        case Number(o)                    => Number(value % o)
+        case Number(o) => Number(value % o)
       }
 
     override def unary_- : Numeric =
@@ -468,10 +479,10 @@ object Value {
 
     override def toNumeric: Numeric =
       value match {
-        case ""          => Number(0)
-        case "Infinity"  => Infinity
+        case "" => Number(0)
+        case "Infinity" => Infinity
         case "-Infinity" => -Infinity
-        case _           => Try(value.toDouble).map(Number).getOrElse(NaN)
+        case _ => Try(value.toDouble).map(Number).getOrElse(NaN)
       }
   }
 
@@ -480,7 +491,7 @@ object Value {
     override def `==`(other: Value): Bool =
       other match {
         case Number(0) => if (values.isEmpty) True else False
-        case _         => this `===` other
+        case _ => this `===` other
       }
 
     override def toArr: Arr =
@@ -607,5 +618,87 @@ object Value {
       def get(index: Int): Option[Value] =
         parameters.lift(index).map(_.value)
     }
+
   }
+
+  final case class Regex(pattern: String, flagSet: Set[RegexFlag] = Set.empty) extends Value {
+
+    import java.util.regex._
+
+    override def `==`(other: Value): Bool = Bool(eq(other))
+
+    private def source: String = if (this.pattern.isEmpty) "(?:)" else this.pattern
+
+    private def flags: String = flagSet.toSeq.map(_.flag).sorted.mkString
+
+    override def toStr: Str = Value.Str(s"/$source/$flags")
+
+    override def toBool: Bool = Value.True
+
+    override def toNumeric: Numeric = Value.NaN
+
+    private def javaFlagInt(flag: RegexFlag): Int = flag match {
+      case RegexFlag.CaseInsensitive => Pattern.CASE_INSENSITIVE
+      case _ => 0
+    }
+
+    private lazy val javaRegexMatcher: Pattern = {
+      val javaFlags = flagSet.foldLeft(0)((l, flag) => l | javaFlagInt(flag))
+      Pattern.compile(pattern, javaFlags)
+    }
+
+    def global: Boolean = flagSet.contains(RegexFlag.ApplyGlobally)
+
+    def multiline: Boolean = flagSet.contains(RegexFlag.MultiLine)
+
+    def ignoreCase: Boolean = flagSet.contains(RegexFlag.CaseInsensitive)
+
+    def sticky: Boolean = flagSet.contains(RegexFlag.Sticky)
+
+    //TODO sticky flag (may need a var ...)
+    def testFunction: Value = Value.Function {
+      (_, params) =>
+        val subjectUnderTest = params.get("str", 0)
+
+        // TODO is there an easy way to do case insensitive without using Java?
+        def matchSingleLine(str: String): Boolean = javaRegexMatcher.matcher(str).matches()
+
+        def matchMultiLine(str: String): Boolean =
+          if (multiline) str.split(System.lineSeparator).exists(matchSingleLine)
+          else matchSingleLine(str)
+
+        Bool(subjectUnderTest exists (sut => matchMultiLine(sut.toStr.value)))
+    }
+
+    override def properties: Map[String, Value] = Map(
+      "flags" -> Str(flags),
+      "global" -> Bool(global),
+      "ignoreCase" -> Bool(ignoreCase),
+      "multiline" -> Bool(multiline),
+      "test" -> testFunction,
+      "sticky" -> Bool(sticky),
+      "source" -> Str(source)
+    )
+  }
+
+  sealed abstract class RegexFlag(val flag: String)
+
+  object RegexFlag {
+    def apply(flag: AST.RegexFlag): RegexFlag = flag match {
+      case AST.RegexFlag.ApplyGlobally => ApplyGlobally
+      case AST.RegexFlag.CaseInsensitive => CaseInsensitive
+      case AST.RegexFlag.MultiLine => MultiLine
+      case AST.RegexFlag.Sticky => Sticky
+    }
+
+    final case object ApplyGlobally extends RegexFlag(AST.RegexFlag.ApplyGlobally.flag)
+
+    final case object CaseInsensitive extends RegexFlag(AST.RegexFlag.CaseInsensitive.flag)
+
+    final case object MultiLine extends RegexFlag(AST.RegexFlag.MultiLine.flag)
+
+    final case object Sticky extends RegexFlag(AST.RegexFlag.Sticky.flag)
+
+  }
+
 }
